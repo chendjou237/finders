@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Platform, StyleSheet, TextInput, TouchableOpacity, Alert, ViewStyle } from 'react-native';
-import DateTimePicker, { AndroidMode } from '@react-native-community/datetimepicker';
+import { Platform, StyleSheet, TextInput, TouchableOpacity, Alert, ViewStyle, TextStyle } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 interface SearchResult {
   lac: number;
-  cellID: number;
+  cellid: number;
   coordinates: string;
 }
 
@@ -28,35 +28,36 @@ export default function SearchScreen() {
 
     setLoading(true);
     try {
+      const newDate = date.getFullYear() + '-' + ('0' + (date.getMonth() + 1)).slice(-2) + '-' + ('0' + date.getDate()).slice(-2) + ' ' + ('0' + date.getHours()).slice(-2) + ':' + ('0' + date.getMinutes()).slice(-2) + ':' + ('0' + date.getSeconds()).slice(-2);
       // TODO: Remplacer par l'URL de votre API
-      const response = await fetch('lo', {
+      const response = await fetch('https://finder-api-production-7bb8.up.railway.app/phone-calls/search', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           // TODO: Ajouter votre token d'authentification
-          'Authorization': 'Bearer YOUR_TOKEN'
+          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjaGVuIiwiaWF0IjoxNzU0MTM4MTMyLCJleHAiOjE3NTQxNDE3MzJ9.0dwQ82zvS0O_XZbhCe5ojEbRIGDDLoMMVUsFK9EGGHA'
         },
         body: JSON.stringify({
-          phoneNumber,
-          datetime: date.toISOString()
+          phone_number: phoneNumber,
+          datetime: newDate
         })
       });
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Réponse API:', {
-          status: response.status,
-          statusText: response.statusText,
-          body: errorText
-        });
-        throw new Error(`Erreur ${response.status}: ${errorText || response.statusText}`);
+      //   console.error('Réponse API:', {
+      //     status: response.status,
+      //     statusText: response.statusText,
+      //     body: errorText
+      //   });
+        let errorMessage = `Erreur ${response.status}`; if (response.status === 404) { errorMessage = `Aucune donnée trouvée pour ce numéro et cette date/heure.  ${errorText}`; } else if (errorText) { try { const errorJson = JSON.parse(errorText); errorMessage += `: ${errorJson.message || errorText}`; } catch (e) { errorMessage += `: ${errorText}`; } } else if (response.statusText) { errorMessage += `: ${response.statusText}`; } throw new Error(errorMessage);
       }
 
       const data = await response.json();
       console.log('Données reçues:', data);
       setResult(data);
     } catch (error) {
-      Alert.alert('Erreur', error instanceof Error ? error.message : 'Une erreur est survenue');
+      Alert.alert('Erreur', error instanceof Error ? error.message : 'Une erreur inattendue est survenue. Veuillez réessayer.');
     } finally {
       setLoading(false);
     }
@@ -95,7 +96,7 @@ export default function SearchScreen() {
         {showDatePicker && (
           <DateTimePicker
             value={date}
-            mode={Platform.OS === 'ios' ? 'datetime' : 'date' as AndroidMode}
+            mode={Platform.OS === 'ios' ? 'datetime' : 'date'}
             display="default"
             onChange={(event, selectedDate) => {
               setShowDatePicker(false);
@@ -118,7 +119,7 @@ export default function SearchScreen() {
           <ThemedView style={styles.resultContainer}>
             <ThemedText type="subtitle">Résultats</ThemedText>
             <ThemedText>LAC: {result.lac}</ThemedText>
-            <ThemedText>Cell ID: {result.cellID}</ThemedText>
+            <ThemedText>Cell ID: {result.cellid}</ThemedText>
             <ThemedText>Coordonnées GPS: {result.coordinates}</ThemedText>
           </ThemedView>
         )}
@@ -158,7 +159,7 @@ const styles = StyleSheet.create({
   } as ViewStyle,
   dateLabel: {
     marginTop: 16
-  },
+  } as TextStyle,
   dateButton: {
     height: 40,
     borderWidth: 1,
@@ -179,7 +180,7 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#fff',
     fontWeight: 'bold'
-  },
+  } as TextStyle,
   resultContainer: {
     marginTop: 20,
     padding: 16,
